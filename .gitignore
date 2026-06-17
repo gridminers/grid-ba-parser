@@ -218,6 +218,7 @@ mock_db_exports/*
 !mock_db_exports/08b48c1e-d7ee-46b5-a574-5d73ec9d550f.json
 apps/api/.venv/
 .env
+docker-data/
 *.local
 
 # Node / Next.js

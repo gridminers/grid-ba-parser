@@ -9,6 +9,133 @@ The project contains:
 - `supabase/schema.sql` - Postgres/Supabase schema, including pgvector tables for approved chunks.
 - `docs/parser-prototype-plan.md` - Architecture and implementation plan.
 
+## Current Feature Status
+
+### Implemented
+
+- Single PDF upload, multiple PDF upload, and browser folder PDF upload from the web UI.
+- Server-folder batch scan through the UI and `POST /batch/scan`.
+- Cron-friendly batch scan script at `apps/api/scripts/scan_and_export.py`.
+- PDF rendering and embedded text extraction through PyMuPDF.
+- Optional OCR through Tesseract when the local `tesseract` binary is installed.
+- OCR layout hints with bounding boxes when Tesseract is available, so the VLM receives more than plain line-by-line text.
+- VLM extraction through three providers: hosted OpenAI, local Ollama, and local vLLM.
+- Prompting for the 19 priority fields: `Projekttitel`, `Geschäftsjahr`, `Ausführungszeit`, `Antragsgrund`, `Sparte`, `Asset`, `PSP-Element`, `Leitungsmeter`, `Euro pro Meter Trassenlänge`, cost fields, surcharge fields, `Gesamtkosten`, and `Zahlungsplan`.
+- Editable draft JSON output with page-level debug artifacts.
+- Saved VLM debug JSON containing `provider`, `model`, `prompt`, and `raw_response`.
+- Mock database export from the UI with `Send to DB (mock)`.
+- Mock database export from the API with `POST /documents/{document_id}/mock-db-export`.
+- Mock database export from cron/batch scans when export-after-parse is enabled.
+- Example mock export payload tracked in `mock_db_exports/08b48c1e-d7ee-46b5-a574-5d73ec9d550f.json` for the API team.
+- Supabase schema and sync path, enabled only when Supabase credentials are configured.
+
+### Not Implemented Or Still Mocked
+
+- The final database write API is not connected yet. `Send to DB (mock)` writes a local JSON file instead.
+- Production authentication, authorization, and user management are not included.
+- A managed scheduler service is not included. Use the documented cron command for automatic folder scans.
+- Tesseract is not bundled with the app. It must be installed on the host machine.
+- VLM model availability is external. OpenAI depends on the API key/account model access, Ollama depends on locally pulled models, and vLLM depends on the local server.
+- The parser does not learn automatically from manual corrections yet.
+- Extraction is not guaranteed to be perfect for every non-uniform PDF. The current workflow expects operator review of draft JSON and debug artifacts.
+- The browser cannot scan arbitrary server folders directly. `Scan server folder` only works for paths visible to the API process.
+
+## Fresh Local Setup Checklist
+
+These commands assume Linux or WSL2 from the repository root. Windows PowerShell commands are shown later in provider-specific sections.
+
+1. Copy the environment template:
+
+```bash
+cp .env.example .env
+```
+
+2. Create and install the API environment:
+
+```bash
+python3 -m venv apps/api/.venv
+apps/api/.venv/bin/python -m pip install --upgrade pip
+apps/api/.venv/bin/pip install -e 'apps/api[dev]'
+```
+
+3. Install Tesseract for better OCR and bounding-box layout hints:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng
+```
+
+4. Install web dependencies. If the system already has Node.js 22+ and npm, use:
+
+```bash
+npm --prefix apps/web install
+```
+
+If Node is not installed, use a local Node runtime inside the repo:
+
+```bash
+mkdir -p .local-tools
+curl -fsSL https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz \
+  -o .local-tools/node-v22.12.0-linux-x64.tar.xz
+tar -xJf .local-tools/node-v22.12.0-linux-x64.tar.xz -C .local-tools
+PATH="$PWD/.local-tools/node-v22.12.0-linux-x64/bin:$PATH" npm --prefix apps/web install
+```
+
+5. Configure `.env` for one VLM provider:
+
+```env
+# Hosted OpenAI
+VLM_PROVIDER=openai
+OPENAI_API_KEY=sk-your-key
+OPENAI_VISION_MODEL=gpt-5.5
+API_ENABLE_VLM=true
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+```
+
+For local Ollama or local vLLM, use the provider-specific sections below.
+
+6. Start the API:
+
+```bash
+mkdir -p logs
+PYTHONUNBUFFERED=1 apps/api/.venv/bin/python -m uvicorn app.main:app \
+  --reload \
+  --app-dir apps/api \
+  --host 127.0.0.1 \
+  --port 8000 \
+  2>&1 | tee -a logs/api.log
+```
+
+7. Start the web UI in another terminal:
+
+```bash
+mkdir -p logs
+PATH="$PWD/.local-tools/node-v22.12.0-linux-x64/bin:$PATH" \
+NEXT_PUBLIC_API_BASE=http://localhost:8000 \
+npm --prefix apps/web run dev -- --hostname 127.0.0.1 --port 3000 \
+  2>&1 | tee -a logs/web.log
+```
+
+8. Open the app:
+
+```text
+http://127.0.0.1:3000
+```
+
+9. Verify the running services:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl -I http://127.0.0.1:3000
+curl "http://127.0.0.1:8000/vlm/models?provider=openai"
+```
+
+10. Watch logs while parsing:
+
+```bash
+tail -f logs/api.log logs/web.log
+```
+
 ## Quick Start
 
 ```powershell
@@ -28,6 +155,75 @@ npm run dev
 ```
 
 Open `http://localhost:3000` for the technical console. The API runs on `http://localhost:8000`.
+
+## Docker Run
+
+The app can run locally with Docker Compose as two long-running services plus one optional scanner job:
+
+- `api` - FastAPI parser backend on port `8000`.
+- `web` - Next.js operator UI on port `3000`.
+- `scanner` - one-off batch scanner that reads PDFs from `docker-data/incoming`.
+
+Create the local shared data folders:
+
+```bash
+mkdir -p docker-data/incoming docker-data/documents docker-data/mock_db_exports
+```
+
+Configure `.env` before starting the containers. For OpenAI:
+
+```env
+VLM_PROVIDER=openai
+OPENAI_API_KEY=sk-your-key
+OPENAI_VISION_MODEL=gpt-5.5
+API_ENABLE_VLM=true
+API_DATA_DIR=/data
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+```
+
+Build and run the API and web UI:
+
+```bash
+docker compose up --build api web
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+Verify the API:
+
+```bash
+curl http://localhost:8000/health
+```
+
+To scan PDFs without the UI, place files in:
+
+```text
+docker-data/incoming/
+```
+
+Then run the scanner job:
+
+```bash
+docker compose run --rm scanner
+```
+
+Mock database export JSON files are written to:
+
+```text
+docker-data/mock_db_exports/
+```
+
+For host cron, run the scanner on a schedule:
+
+```cron
+*/10 * * * * cd /path/to/grid-ba-parser && docker compose run --rm scanner >> logs/docker-cron.log 2>&1
+```
+
+The Docker API image includes Tesseract with German and English OCR language packages. The same image can be used in AWS ECS as the API service and as the scheduled scanner task.
 
 ## Runtime Notes
 
