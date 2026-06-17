@@ -50,7 +50,7 @@ def pdf_to_images(pdf_path: Path) -> list[bytes]:
 
     try:
         import fitz  # type: ignore
-    except Exception as exc:  # pragma: no cover - exercised only if dependency missing
+    except ImportError as exc:  # pragma: no cover - exercised only if dependency missing
         raise RuntimeError(
             "PyMuPDF (fitz) is required to render PDF pages as images. "
             "Install it with: pip install pymupdf"
@@ -113,6 +113,7 @@ def export_to_sqlite(
     database_path: str | Path,
     table_name: str = "parsed_records",
 ) -> None:
+    """Write parsed records into SQLite after clearing existing rows in the target table."""
     safe_table_name = _validated_table_name(table_name)
     connection = sqlite3.connect(str(database_path))
     try:

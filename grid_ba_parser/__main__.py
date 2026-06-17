@@ -37,8 +37,12 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    pdf_path = Path(args.pdf)
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
     extractor = PDFStructuredExtractor(vision_client=JSONVisionClient(args.vision_json))
-    parsed = extractor.extract(args.pdf)
+    parsed = extractor.extract(pdf_path)
 
     if args.csv:
         export_to_csv(parsed, args.csv)
