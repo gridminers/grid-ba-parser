@@ -48,6 +48,10 @@ def main() -> None:
     pdf_path = Path(args.pdf)
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+    if not args.csv and not args.sqlite:
+        parser.error("At least one output target must be provided: --csv and/or --sqlite")
+    if args.dpi < 72 or args.dpi > 600:
+        parser.error("--dpi must be between 72 and 600")
     if pdf_path.suffix.lower() != ".pdf":
         raise ValueError(f"Input file must be a PDF: {pdf_path}")
 

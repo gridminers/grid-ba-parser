@@ -94,7 +94,7 @@ def export_to_csv(parsed_pages: Sequence[ParsedPage], output_path: str | Path) -
                 writer.writerow([page.page_number, field, value])
 
 def _validated_table_name(table_name: str) -> str:
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table_name):
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", table_name):
         raise ValueError("table_name must contain only letters, numbers, and underscores")
     return table_name
 
