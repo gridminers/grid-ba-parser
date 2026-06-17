@@ -9,6 +9,10 @@ from fastapi import UploadFile
 from .models import DocumentDraft, DocumentRecord, JobStatus, utc_now
 
 
+def sha256_bytes(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
 class LocalStore:
     def __init__(self, data_dir: Path):
         self.data_dir = data_dir
@@ -33,6 +37,11 @@ class LocalStore:
     def draft_path(self, document_id: str) -> Path:
         return self.document_dir(document_id) / "draft.json"
 
+    def mock_db_exports_dir(self) -> Path:
+        path = self.data_dir / "mock_db_exports"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def job_path(self, job_id: str) -> Path:
         return self.jobs_dir / f"{job_id}.json"
 
@@ -50,12 +59,28 @@ class LocalStore:
 
     async def create_document_from_upload(self, upload: UploadFile) -> DocumentRecord:
         content = await upload.read()
-        sha256 = hashlib.sha256(content).hexdigest()
+        sha256 = sha256_bytes(content)
         existing = self.find_by_sha256(sha256)
         if existing:
             return existing
 
         filename = Path(upload.filename or "document.pdf").name
+        record = DocumentRecord(filename=filename, sha256=sha256, source_path="")
+        doc_dir = self.document_dir(record.id)
+        source_path = doc_dir / filename
+        source_path.write_bytes(content)
+        record.source_path = str(source_path)
+        self.save_document(record)
+        return record
+
+    def create_document_from_path(self, pdf_path: Path) -> DocumentRecord:
+        content = pdf_path.read_bytes()
+        sha256 = sha256_bytes(content)
+        existing = self.find_by_sha256(sha256)
+        if existing:
+            return existing
+
+        filename = pdf_path.name
         record = DocumentRecord(filename=filename, sha256=sha256, source_path="")
         doc_dir = self.document_dir(record.id)
         source_path = doc_dir / filename

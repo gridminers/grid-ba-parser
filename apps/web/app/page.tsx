@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   API_BASE,
+  ArtifactTextResponse,
   DocumentDraft,
   DocumentRecord,
   JobStatus,
+  MockDbExportResponse,
   VlmModelInfo,
   VlmModelsResponse,
   apiJson,
@@ -16,6 +18,14 @@ type DocumentsResponse = { documents: DocumentRecord[] };
 type UploadResponse = { documents: DocumentRecord[] };
 type ValidateResponse = { valid: boolean; errors: string[]; warnings: string[] };
 type SyncResponse = { status: string; message: string; chunks: number; embeddings: number };
+type BatchScanRequest = {
+  document_ids?: string[];
+  folder_path?: string;
+  recursive?: boolean;
+  vlm_provider?: string;
+  vlm_model?: string;
+  export_after_parse?: boolean;
+};
 
 function statusClass(status: string) {
   return `status ${status}`;
@@ -68,6 +78,11 @@ export default function Home() {
   const [vlmModel, setVlmModel] = useState("");
   const [vlmModels, setVlmModels] = useState<VlmModelInfo[]>([]);
   const [vlmMessage, setVlmMessage] = useState("");
+  const [artifactTitle, setArtifactTitle] = useState("");
+  const [artifactText, setArtifactText] = useState("");
+  const [serverFolderPath, setServerFolderPath] = useState("");
+  const [serverFolderRecursive, setServerFolderRecursive] = useState(false);
+  const [exportAfterBatch, setExportAfterBatch] = useState(true);
 
   const selectedDocument = useMemo(
     () => documents.find((item) => item.id === selectedId) || null,
@@ -133,7 +148,9 @@ export default function Home() {
         setJob(nextJob);
         if (nextJob.state === "completed") {
           await refreshDocuments();
-          await loadDraft(nextJob.document_id);
+          if (nextJob.document_id !== "batch") {
+            await loadDraft(nextJob.document_id);
+          }
         }
       } catch (exc) {
         setError(String(exc));
@@ -147,21 +164,74 @@ export default function Home() {
     setError("");
     setMessage("");
     try {
+      const files = formData
+        .getAll("files")
+        .filter((item): item is File => item instanceof File && item.name.toLowerCase().endsWith(".pdf"));
+      if (!files.length) {
+        throw new Error("No PDF files selected");
+      }
+      const pdfData = new FormData();
+      files.forEach((file) => pdfData.append("files", file, file.name));
       const response = await fetch(`${API_BASE}/documents/upload`, {
         method: "POST",
-        body: formData
+        body: pdfData
       });
       if (!response.ok) throw new Error(await response.text());
       const data = (await response.json()) as UploadResponse;
       setDocuments(data.documents);
       if (data.documents[0]) setSelectedId(data.documents[0].id);
       await refreshDocuments();
-      setMessage(`Uploaded ${data.documents.length} document(s)`);
+      setMessage(`Uploaded ${data.documents.length} PDF document(s)`);
     } catch (exc) {
       setError(String(exc));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function startBatchScan(request: BatchScanRequest) {
+    setBusy(true);
+    setError("");
+    try {
+      const nextJob = await apiJson<JobStatus>("/batch/scan", {
+        method: "POST",
+        body: JSON.stringify(request)
+      });
+      setJob(nextJob);
+      setMessage("Batch scan queued");
+    } catch (exc) {
+      setError(String(exc));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function parseAllUploaded() {
+    const ids = documents.map((document) => document.id);
+    if (!ids.length) {
+      setError("No uploaded PDFs to scan");
+      return;
+    }
+    await startBatchScan({
+      document_ids: ids,
+      vlm_provider: vlmProvider,
+      vlm_model: vlmModel || undefined,
+      export_after_parse: exportAfterBatch
+    });
+  }
+
+  async function scanServerFolder() {
+    if (!serverFolderPath.trim()) {
+      setError("Enter a server folder path");
+      return;
+    }
+    await startBatchScan({
+      folder_path: serverFolderPath.trim(),
+      recursive: serverFolderRecursive,
+      vlm_provider: vlmProvider,
+      vlm_model: vlmModel || undefined,
+      export_after_parse: exportAfterBatch
+    });
   }
 
   async function startParse() {
@@ -278,6 +348,39 @@ export default function Home() {
     }
   }
 
+  async function exportMockDb() {
+    if (!selectedId) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await apiJson<MockDbExportResponse>(
+        `/documents/${selectedId}/mock-db-export`,
+        { method: "POST" }
+      );
+      setMessage(
+        `${result.status}: ${result.fields} key/value pair(s) written to ${result.export_path || "n/a"}`
+      );
+    } catch (exc) {
+      setError(String(exc));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadArtifact(title: string, path?: string | null) {
+    if (!selectedId || !path) return;
+    setError("");
+    try {
+      const result = await apiJson<ArtifactTextResponse>(
+        `/documents/${selectedId}/artifact-text?path=${encodeURIComponent(path)}`
+      );
+      setArtifactTitle(title);
+      setArtifactText(result.text);
+    } catch (exc) {
+      setError(String(exc));
+    }
+  }
+
   function updateField(index: number, key: "label" | "value_raw" | "value_normalized", value: string) {
     if (!draft) return;
     const next: DocumentDraft = {
@@ -320,6 +423,70 @@ export default function Home() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-header">
+            <strong>Batch Scan</strong>
+          </div>
+          <div className="panel-body">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = event.currentTarget;
+                const data = new FormData(form);
+                handleUpload(data);
+                form.reset();
+              }}
+            >
+              <input
+                {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+                name="files"
+                type="file"
+                multiple
+              />
+              <div className="subtle">Choose a browser folder; only PDF files are uploaded.</div>
+              <div className="toolbar">
+                <button disabled={busy} type="submit">
+                  Upload folder PDFs
+                </button>
+                <button disabled={!documents.length || busy} onClick={parseAllUploaded} type="button">
+                  Parse all uploaded
+                </button>
+              </div>
+            </form>
+            <label className="subtle" htmlFor="server-folder">
+              Server folder path for cron-style scans
+            </label>
+            <input
+              id="server-folder"
+              placeholder="/absolute/path/to/pdf-folder"
+              style={{ width: "100%", marginTop: 6 }}
+              value={serverFolderPath}
+              onChange={(event) => setServerFolderPath(event.target.value)}
+            />
+            <div className="toolbar">
+              <label>
+                <input
+                  checked={serverFolderRecursive}
+                  onChange={(event) => setServerFolderRecursive(event.target.checked)}
+                  type="checkbox"
+                />{" "}
+                Recursive
+              </label>
+              <label>
+                <input
+                  checked={exportAfterBatch}
+                  onChange={(event) => setExportAfterBatch(event.target.checked)}
+                  type="checkbox"
+                />{" "}
+                Send to DB after scan (mock)
+              </label>
+              <button disabled={busy || !serverFolderPath.trim()} onClick={scanServerFolder} type="button">
+                Scan server folder
+              </button>
+            </div>
           </div>
         </div>
 
@@ -411,6 +578,9 @@ export default function Home() {
               </button>
               <button disabled={!draft || busy} onClick={syncDraft}>
                 Sync to Supabase
+              </button>
+              <button disabled={!draft || busy} onClick={exportMockDb}>
+                Send to DB (mock)
               </button>
             </div>
           </div>
@@ -533,6 +703,22 @@ export default function Home() {
                 <div className="subtle">
                   VLM: <code>{page.vlm_response_path || "n/a"}</code>
                 </div>
+                <div className="toolbar" style={{ marginTop: 8 }}>
+                  <button
+                    disabled={!page.text_path}
+                    onClick={() => loadArtifact(`Page ${page.page} OCR text`, page.text_path)}
+                    type="button"
+                  >
+                    View OCR
+                  </button>
+                  <button
+                    disabled={!page.vlm_response_path}
+                    onClick={() => loadArtifact(`Page ${page.page} VLM prompt and response`, page.vlm_response_path)}
+                    type="button"
+                  >
+                    View VLM JSON
+                  </button>
+                </div>
                 {page.warnings.map((warning) => (
                   <div className="subtle" key={`${warning.code}-${warning.message}`}>
                     {warning.code}: {warning.message}
@@ -542,6 +728,26 @@ export default function Home() {
             ))}
           </div>
         </div>
+
+        {artifactText && (
+          <div className="panel">
+            <div className="panel-header">
+              <strong>{artifactTitle}</strong>
+              <button
+                type="button"
+                onClick={() => {
+                  setArtifactTitle("");
+                  setArtifactText("");
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div className="panel-body">
+              <textarea className="json-editor" readOnly spellCheck={false} value={artifactText} />
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );

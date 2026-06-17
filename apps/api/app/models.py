@@ -101,6 +101,42 @@ class UploadResponse(BaseModel):
     documents: list[DocumentRecord]
 
 
+class BatchScanRequest(BaseModel):
+    document_ids: list[str] = Field(default_factory=list)
+    folder_path: str | None = None
+    recursive: bool = False
+    vlm_provider: str | None = None
+    vlm_model: str | None = None
+    export_after_parse: bool = False
+
+
+class MockDbField(BaseModel):
+    label: str
+    sanitized_value: str | None = None
+    value_normalized: str | None = None
+    value_raw: str | None = None
+    type: str = "text"
+    page: int
+    confidence: float = 0.0
+    source: FieldSource = "heuristic"
+
+
+class MockDbExportPayload(BaseModel):
+    document_id: str
+    filename: str
+    sha256: str
+    exported_at: datetime = Field(default_factory=utc_now)
+    fields: list[MockDbField] = Field(default_factory=list)
+
+
+class MockDbExportResponse(BaseModel):
+    status: Literal["exported", "skipped", "failed"]
+    message: str
+    document_id: str
+    export_path: str | None = None
+    fields: int = 0
+
+
 class ValidateResult(BaseModel):
     valid: bool
     errors: list[str] = Field(default_factory=list)

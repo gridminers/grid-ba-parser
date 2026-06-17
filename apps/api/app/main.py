@@ -5,11 +5,14 @@ from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, Uplo
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .batch import export_mock_db_payload, parse_and_optionally_export, register_folder_pdfs
 from .config import Settings, get_settings
 from .extraction import validate_draft_fields
 from .models import (
+    BatchScanRequest,
     DocumentDraft,
     JobStatus,
+    MockDbExportResponse,
     SearchRequest,
     SearchResponse,
     SyncResult,
@@ -112,6 +115,67 @@ def _run_parse_job(
     store.save_job(job)
 
 
+def _run_batch_scan_job(job_id: str, request: BatchScanRequest) -> None:
+    job = store.get_job(job_id)
+    job.state = "running"
+    job.started_at = utc_now()
+    job.message = "batch scan running"
+    job.progress = 0.05
+    job.logs.append("batch scan started")
+    store.save_job(job)
+
+    try:
+        records = []
+        if request.folder_path:
+            folder_records = register_folder_pdfs(
+                store=store,
+                folder_path=Path(request.folder_path),
+                recursive=request.recursive,
+            )
+            records.extend(folder_records)
+            job.logs.append(f"registered {len(folder_records)} PDF(s) from folder")
+
+        for document_id in request.document_ids:
+            records.append(store.get_document(document_id))
+
+        unique_records = {record.id: record for record in records}
+        total = len(unique_records)
+        if not total:
+            job.message = "no PDFs to scan"
+            job.logs.append("no documents found")
+        for index, record in enumerate(unique_records.values(), start=1):
+            job.message = f"scanning {record.filename}"
+            job.progress = min(0.95, index / max(total, 1))
+            job.logs.append(f"parsing {record.filename} ({record.id})")
+            store.save_job(job)
+            export_result = parse_and_optionally_export(
+                store=store,
+                settings=settings,
+                document_id=record.id,
+                vlm_provider=request.vlm_provider,
+                vlm_model=request.vlm_model,
+                export_after_parse=request.export_after_parse,
+            )
+            if export_result:
+                job.logs.append(
+                    f"{export_result.status}: {export_result.fields} field(s) -> "
+                    f"{export_result.export_path or 'n/a'}"
+                )
+
+        job.state = "completed"
+        job.progress = 1.0
+        job.message = f"batch scan completed: {total} document(s)"
+        job.logs.append("batch scan completed")
+        job.completed_at = utc_now()
+    except Exception as exc:
+        job.state = "failed"
+        job.error = str(exc)
+        job.message = "batch scan failed"
+        job.logs.append(str(exc))
+        job.completed_at = utc_now()
+    store.save_job(job)
+
+
 @app.post("/documents/{document_id}/parse", response_model=JobStatus)
 def parse_endpoint(
     document_id: str,
@@ -127,6 +191,25 @@ def parse_endpoint(
     job = JobStatus(id=str(uuid4()), document_id=document_id)
     local_store.save_job(job)
     background_tasks.add_task(_run_parse_job, job.id, document_id, None, vlm_provider, vlm_model)
+    return job
+
+
+@app.post("/batch/scan", response_model=JobStatus)
+def batch_scan(
+    request: BatchScanRequest,
+    background_tasks: BackgroundTasks,
+    local_store: LocalStore = Depends(get_store),
+) -> JobStatus:
+    if not request.document_ids and not request.folder_path:
+        raise HTTPException(status_code=400, detail="Provide document_ids or folder_path")
+    for document_id in request.document_ids:
+        try:
+            local_store.get_document(document_id)
+        except FileNotFoundError:
+            raise _not_found(f"document not found: {document_id}") from None
+    job = JobStatus(id=str(uuid4()), document_id="batch", message="queued batch scan")
+    local_store.save_job(job)
+    background_tasks.add_task(_run_batch_scan_job, job.id, request)
     return job
 
 
@@ -186,6 +269,18 @@ def sync_document(
         record.status = "synced"
         local_store.save_document(record)
     return result
+
+
+@app.post("/documents/{document_id}/mock-db-export", response_model=MockDbExportResponse)
+def mock_db_export(
+    document_id: str,
+    local_store: LocalStore = Depends(get_store),
+) -> MockDbExportResponse:
+    try:
+        local_store.get_document(document_id)
+    except FileNotFoundError:
+        raise _not_found("document not found") from None
+    return export_mock_db_payload(store=local_store, document_id=document_id)
 
 
 @app.post("/search", response_model=SearchResponse)
