@@ -74,6 +74,20 @@ class ParserTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 export_to_sqlite(parsed, db_path, table_name="records; DROP TABLE parsed_records")
 
+
+    def test_sqlite_export_handles_empty_input(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "parsed.db"
+            export_to_sqlite([], db_path)
+
+            connection = sqlite3.connect(str(db_path))
+            try:
+                row_count = connection.execute("SELECT COUNT(*) FROM parsed_records").fetchone()[0]
+            finally:
+                connection.close()
+
+        self.assertEqual(row_count, 0)
+
     def test_sqlite_export(self) -> None:
         parsed = [
             ParsedPage(page_number=1, fields={"A": "1", "B": "2"}),

@@ -4,7 +4,13 @@ import argparse
 import json
 from pathlib import Path
 
-from .parser import PDFStructuredExtractor, VisionModelClient, export_to_csv, export_to_sqlite
+from .parser import (
+    PDFStructuredExtractor,
+    VisionModelClient,
+    export_to_csv,
+    export_to_sqlite,
+    pdf_to_images,
+)
 
 
 class JSONVisionClient(VisionModelClient):
@@ -33,6 +39,7 @@ def main() -> None:
         help="JSON file of VLM extracted text keyed by page number",
     )
     parser.add_argument("--csv", help="Output CSV path")
+    parser.add_argument("--dpi", type=int, default=200, help="PDF render DPI (default: 200)")
     parser.add_argument("--sqlite", help="Output SQLite DB path")
 
     args = parser.parse_args()
@@ -40,8 +47,13 @@ def main() -> None:
     pdf_path = Path(args.pdf)
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+    if pdf_path.suffix.lower() != ".pdf":
+        raise ValueError(f"Input file must be a PDF: {pdf_path}")
 
-    extractor = PDFStructuredExtractor(vision_client=JSONVisionClient(args.vision_json))
+    extractor = PDFStructuredExtractor(
+        vision_client=JSONVisionClient(args.vision_json),
+        image_loader=lambda path: pdf_to_images(path, dpi=args.dpi),
+    )
     parsed = extractor.extract(pdf_path)
 
     if args.csv:

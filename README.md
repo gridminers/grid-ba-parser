@@ -12,7 +12,7 @@ Parser for unstructured PDF documents that are not OCR-readable. The parser rend
 ## CLI usage
 
 ```bash
-python -m grid_ba_parser --pdf invoice.pdf --vision-json vlm_output.json --csv output.csv --sqlite output.db
+python -m grid_ba_parser --pdf invoice.pdf --vision-json vlm_output.json --csv output.csv --sqlite output.db --dpi 200
 ```
 
 `--vision-json` is a deterministic adapter input where keys are page numbers and values are raw extracted text from the vision model.

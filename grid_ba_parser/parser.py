@@ -45,7 +45,7 @@ class RuleBasedFormatter:
         return result
 
 
-def pdf_to_images(pdf_path: Path) -> list[bytes]:
+def pdf_to_images(pdf_path: Path, dpi: int = 300) -> list[bytes]:
     """Render each PDF page to PNG bytes for VLM processing."""
 
     try:
@@ -59,7 +59,7 @@ def pdf_to_images(pdf_path: Path) -> list[bytes]:
     images: list[bytes] = []
     with fitz.open(str(pdf_path)) as doc:
         for page in doc:
-            pix = page.get_pixmap(dpi=300)
+            pix = page.get_pixmap(dpi=dpi)
             images.append(pix.tobytes("png"))
     return images
 
