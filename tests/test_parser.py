@@ -12,7 +12,6 @@ from grid_ba_parser.parser import (
     export_to_sqlite,
 )
 
-
 class _FakeVisionClient:
     def __init__(self, responses: list[str]) -> None:
         self._responses = responses
@@ -20,7 +19,6 @@ class _FakeVisionClient:
     def extract(self, image_bytes: bytes, page_number: int) -> str:
         _ = image_bytes
         return self._responses[page_number - 1]
-
 
 class ParserTests(unittest.TestCase):
     def test_rule_based_formatter_handles_multiple_delimiters(self) -> None:
@@ -65,7 +63,6 @@ class ParserTests(unittest.TestCase):
             self.assertEqual(rows[1], ["1", "Account", "12345"])
             self.assertEqual(rows[-1], ["2", "Amount", "300"])
 
-
     def test_sqlite_export_rejects_unsafe_table_name(self) -> None:
         parsed = [ParsedPage(page_number=1, fields={"A": "1"})]
 
@@ -73,7 +70,6 @@ class ParserTests(unittest.TestCase):
             db_path = Path(tmpdir) / "parsed.db"
             with self.assertRaises(ValueError):
                 export_to_sqlite(parsed, db_path, table_name="records; DROP TABLE parsed_records")
-
 
     def test_sqlite_export_handles_empty_input(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -107,7 +103,6 @@ class ParserTests(unittest.TestCase):
                 connection.close()
 
         self.assertEqual(rows, [(1, "A", "1"), (1, "B", "2"), (2, "C", "3")])
-
 
 if __name__ == "__main__":
     unittest.main()

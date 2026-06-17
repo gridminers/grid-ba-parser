@@ -7,19 +7,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Protocol, Sequence
 
-
 class VisionModelClient(Protocol):
     """Vision model contract: image bytes in, extracted text out."""
 
     def extract(self, image_bytes: bytes, page_number: int) -> str:
         ...
 
-
 @dataclass(frozen=True)
 class ParsedPage:
     page_number: int
     fields: dict[str, str]
-
 
 class RuleBasedFormatter:
     """Converts loosely formatted model text into key-value pairs."""
@@ -44,7 +41,6 @@ class RuleBasedFormatter:
                 break
         return result
 
-
 def pdf_to_images(pdf_path: Path, dpi: int = 300) -> list[bytes]:
     """Render each PDF page to PNG bytes for VLM processing."""
 
@@ -62,7 +58,6 @@ def pdf_to_images(pdf_path: Path, dpi: int = 300) -> list[bytes]:
             pix = page.get_pixmap(dpi=dpi)
             images.append(pix.tobytes("png"))
     return images
-
 
 class PDFStructuredExtractor:
     def __init__(
@@ -87,7 +82,6 @@ class PDFStructuredExtractor:
 
         return parsed_pages
 
-
 def export_to_csv(parsed_pages: Sequence[ParsedPage], output_path: str | Path) -> None:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -99,14 +93,10 @@ def export_to_csv(parsed_pages: Sequence[ParsedPage], output_path: str | Path) -
             for field, value in page.fields.items():
                 writer.writerow([page.page_number, field, value])
 
-
-
-
 def _validated_table_name(table_name: str) -> str:
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table_name):
         raise ValueError("table_name must contain only letters, numbers, and underscores")
     return table_name
-
 
 def export_to_sqlite(
     parsed_pages: Sequence[ParsedPage],
