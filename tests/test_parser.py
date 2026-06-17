@@ -71,6 +71,24 @@ class ParserTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 export_to_sqlite(parsed, db_path, table_name="records; DROP TABLE parsed_records")
 
+
+    def test_sqlite_export_accepts_valid_custom_table_name(self) -> None:
+        parsed = [ParsedPage(page_number=1, fields={"A": "1"})]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "parsed.db"
+            export_to_sqlite(parsed, db_path, table_name="parsed_records_2024")
+
+            connection = sqlite3.connect(str(db_path))
+            try:
+                rows = connection.execute(
+                    "SELECT page_number, field, value FROM parsed_records_2024"
+                ).fetchall()
+            finally:
+                connection.close()
+
+        self.assertEqual(rows, [(1, "A", "1")])
+
     def test_sqlite_export_handles_empty_input(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "parsed.db"

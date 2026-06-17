@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from functools import partial
 from pathlib import Path
 
 from .parser import (
@@ -52,7 +53,7 @@ def main() -> None:
 
     extractor = PDFStructuredExtractor(
         vision_client=JSONVisionClient(args.vision_json),
-        image_loader=lambda path: pdf_to_images(path, dpi=args.dpi),
+        image_loader=partial(pdf_to_images, dpi=args.dpi),
     )
     parsed = extractor.extract(pdf_path)
 
