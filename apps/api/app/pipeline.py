@@ -3,7 +3,7 @@ from pathlib import Path
 from .config import Settings
 from .extraction import extract_key_values, extract_table_blocks, warning
 from .models import DocumentDraft, PageArtifact, WarningItem
-from .ocr import run_ocr
+from .ocr import OcrLine, run_ocr
 from .pdf_utils import render_pdf_pages
 from .storage import LocalStore
 from .vlm import extract_page_with_vlm
@@ -31,6 +31,60 @@ def _merge_texts(embedded_text: str, ocr_text: str) -> str:
     if len(ocr_text) > len(embedded_text) * 1.25:
         return f"{embedded_text}\n{ocr_text}".strip()
     return embedded_text or ocr_text
+
+
+def _ocr_layout_payload(lines: list[OcrLine] | None) -> list[dict]:
+    if not lines:
+        return []
+    return [
+        {
+            "text": line.text,
+            "bbox": line.bbox,
+            "confidence": line.confidence,
+        }
+        for line in lines
+    ]
+
+
+def _ocr_layout_context(lines: list[OcrLine] | None, max_lines: int = 90) -> str | None:
+    if not lines:
+        return None
+
+    important_terms = (
+        "projekt",
+        "geschäftsjahr",
+        "geschaeftsjahr",
+        "ausführungszeit",
+        "ausfuehrungszeit",
+        "antragsgrund",
+        "sparte",
+        "asset",
+        "psp",
+        "leitung",
+        "meter",
+        "kosten",
+        "leistung",
+        "zuschlag",
+        "gesamt",
+        "zahlungsplan",
+        "jahr",
+        "eur",
+        "€",
+    )
+
+    def score(line: OcrLine) -> tuple[int, int, int]:
+        text = line.text.lower()
+        term_score = sum(1 for term in important_terms if term in text)
+        numeric_score = 1 if any(char.isdigit() for char in text) else 0
+        return (-term_score, -numeric_score, line.bbox[1])
+
+    prioritized = sorted(lines, key=score)[:max_lines]
+    ordered = sorted(prioritized, key=lambda line: (line.bbox[1], line.bbox[0]))
+    rows = []
+    for line in ordered:
+        text = " ".join(line.text.split())[:220]
+        rows.append(f"bbox={line.bbox} text={text}")
+    return "\n".join(rows)
 
 
 def parse_document(
@@ -75,6 +129,11 @@ def parse_document(
         ocr_result = run_ocr(rendered.image_path)
         merged_text = _merge_texts(rendered.text, ocr_result.text)
         text_path.write_text(merged_text, encoding="utf-8")
+        layout_path = pages_dir / f"page-{page_number:03d}.layout.json"
+        layout_payload = _ocr_layout_payload(ocr_result.lines)
+        if layout_payload:
+            store.save_json(layout_path, layout_payload)
+        layout_context = _ocr_layout_context(ocr_result.lines)
         quality_score = score_page(merged_text, ocr_result.confidence)
         route = "local"
         page_warnings: list[WarningItem] = []
@@ -87,6 +146,7 @@ def parse_document(
                     image_path=rendered.image_path,
                     page_number=page_number,
                     settings=settings,
+                    ocr_layout_context=layout_context,
                 )
                 vlm_path = pages_dir / f"page-{page_number:03d}.vlm.json"
                 store.save_json(vlm_path, debug_payload)

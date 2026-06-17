@@ -56,7 +56,27 @@ VLM_SCHEMA: dict[str, Any] = {
                 "properties": {
                     "title": {"type": ["string", "null"]},
                     "page": {"type": "integer"},
-                    "rows": {"type": "array", "items": {"type": "object"}},
+                    "rows": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "label": {"type": ["string", "null"]},
+                                "value_raw": {"type": ["string", "null"]},
+                                "value_normalized": {"type": ["string", "null"]},
+                                "type": {"type": ["string", "null"]},
+                                "evidence": {"type": ["string", "null"]},
+                            },
+                            "required": [
+                                "label",
+                                "value_raw",
+                                "value_normalized",
+                                "type",
+                                "evidence",
+                            ],
+                        },
+                    },
                     "confidence": {"type": "number"},
                 },
                 "required": ["title", "page", "rows", "confidence"],
@@ -79,6 +99,81 @@ VLM_SCHEMA: dict[str, Any] = {
     },
     "required": ["fields", "tables", "warnings"],
 }
+
+
+TARGET_EXTRACTION_FIELDS = [
+    "Projekttitel",
+    "Geschäftsjahr",
+    "Ausführungszeit (von - bis)",
+    "Antragsgrund",
+    "Sparte",
+    "Asset",
+    "PSP-Element",
+    "Leitungsmeter",
+    "Euro pro Meter Trassenlänge",
+    "Materialkosten (netto)",
+    "Fremdleistungen",
+    "Eigenleistungen",
+    "Ingenieurleistungen Dritte",
+    "Gesamtkosten ohne Zuschläge",
+    "Materialkostenzuschläge (17%)",
+    "Investitionszuschläge (23%)",
+    "Zwischensumme Zuschläge",
+    "Gesamtkosten",
+    "Zahlungsplan",
+]
+
+
+def _target_field_instructions() -> str:
+    fields = "\n".join(f"{index}. {label}" for index, label in enumerate(TARGET_EXTRACTION_FIELDS, 1))
+    return (
+        "The most important task is to find these 19 target values whenever they are visible, "
+        "even if the document layout is not uniform:\n"
+        f"{fields}\n\n"
+        "For target values, use the canonical label exactly as written in this list, even if the "
+        "visible document label is a synonym or abbreviated. Put the visible wording in evidence. "
+        "For Geschäftsjahr, also treat it as the value for Jahresauswertung. For Ausführungszeit, "
+        "capture both von and bis in one raw value when both are visible. For cost fields, preserve "
+        "net/gross wording and currency exactly as shown. For Zahlungsplan, extract the visible "
+        "three-year payment plan if present; if only partial yearly payments are visible, return "
+        "the visible years and amounts. Do not calculate or invent missing values. If a target "
+        "field is expected but not visible on this page, do not add it as a field; add a warning "
+        "only when the page appears to contain the relevant cost/project section but the value is "
+        "unreadable or ambiguous."
+    )
+
+
+def _layout_instructions(ocr_layout_context: str | None) -> str:
+    instructions = (
+        "Use spatial layout, not line-by-line reading, to pair labels and values. First locate "
+        "a probable label region, then choose the value region that belongs to it: usually to "
+        "the right in the same row, directly below it, or inside the same table row/cell group. "
+        "Do not combine text across distant columns, unrelated rows, headers, footers, or page "
+        "sections. When possible, return bbox as [left, top, right, bottom] around the value or "
+        "the combined label-value region. Use evidence to quote the nearby visible label/value "
+        "text that justifies the pairing."
+    )
+    if not ocr_layout_context:
+        return instructions
+    return (
+        f"{instructions}\n\n"
+        "OCR layout hints follow. Each line has an approximate pixel bounding box from the rendered "
+        "page image. Treat these as candidate regions for labels, values, and table rows; verify "
+        "against the image before extracting:\n"
+        f"{ocr_layout_context}"
+    )
+
+
+def _page_extraction_prompt(page_number: int, ocr_layout_context: str | None = None) -> str:
+    return (
+        "You are extracting data from a German infrastructure planning approval PDF page. "
+        "Read the image and return JSON only. Extract visible key-value pairs and table-like "
+        "cost rows. Preserve original German labels exactly for non-target fields when legible. "
+        "Use null for unknown values. "
+        f"Use page number {page_number}. Include short evidence snippets and confidence per item.\n\n"
+        f"{_target_field_instructions()}\n\n"
+        f"{_layout_instructions(ocr_layout_context)}"
+    )
 
 
 def _image_data_url(path: Path) -> str:
@@ -145,16 +240,11 @@ def _extract_page_with_openai_responses(
     page_number: int,
     api_key: str,
     model: str,
+    ocr_layout_context: str | None = None,
 ) -> tuple[DocumentDraft, dict[str, Any]]:
     from openai import OpenAI
 
-    prompt = (
-        "Extract visible key-value pairs and table-like cost rows from this German "
-        "infrastructure planning approval page. Preserve original German labels exactly "
-        "when legible. Return only fields that are visible. Use null for unknown values. "
-        "Use page number "
-        f"{page_number}. Include short evidence snippets and confidence per item."
-    )
+    prompt = _page_extraction_prompt(page_number, ocr_layout_context)
     client = OpenAI(api_key=api_key)
     response = client.responses.create(
         model=model,
@@ -182,7 +272,12 @@ def _extract_page_with_openai_responses(
     )
     raw_text = _output_text(response)
     payload = json.loads(raw_text)
-    return _draft_from_payload(payload, page_number), {"raw_response": raw_text, "model": model}
+    return _draft_from_payload(payload, page_number), {
+        "provider": "openai",
+        "prompt": prompt,
+        "raw_response": raw_text,
+        "model": model,
+    }
 
 
 def _extract_page_with_local_vllm(
@@ -193,15 +288,11 @@ def _extract_page_with_local_vllm(
     api_key: str,
     model: str,
     temperature: float,
+    ocr_layout_context: str | None = None,
 ) -> tuple[DocumentDraft, dict[str, Any]]:
     from openai import OpenAI
 
-    prompt = (
-        "You are extracting data from a German infrastructure planning approval PDF page. "
-        "Read the image and return JSON only. Extract visible key-value pairs and table-like "
-        "cost rows. Preserve original German labels exactly when legible. Use null for unknown "
-        f"values. Use page number {page_number}. Include evidence snippets and confidence per item."
-    )
+    prompt = _page_extraction_prompt(page_number, ocr_layout_context)
     client = OpenAI(api_key=api_key, base_url=base_url)
     response = client.chat.completions.create(
         model=model,
@@ -229,6 +320,8 @@ def _extract_page_with_local_vllm(
     raw_text = response.choices[0].message.content or "{}"
     payload = json.loads(raw_text)
     return _draft_from_payload(payload, page_number), {
+        "provider": "local_vllm",
+        "prompt": prompt,
         "raw_response": raw_text,
         "model": model,
         "base_url": base_url,
@@ -242,12 +335,10 @@ def _extract_page_with_ollama(
     base_url: str,
     model: str,
     temperature: float,
+    ocr_layout_context: str | None = None,
 ) -> tuple[DocumentDraft, dict[str, Any]]:
     prompt = (
-        "You are extracting data from a German infrastructure planning approval PDF page. "
-        "Read the image and return JSON only. Extract visible key-value pairs and table-like "
-        "cost rows. Preserve original German labels exactly when legible. Use null for unknown "
-        f"values. Use page number {page_number}. Include evidence snippets and confidence per item. "
+        f"{_page_extraction_prompt(page_number, ocr_layout_context)}\n\n"
         f"JSON schema: {json.dumps(VLM_SCHEMA, ensure_ascii=False)}"
     )
     request_payload = {
@@ -273,6 +364,8 @@ def _extract_page_with_ollama(
     raw_text = (response_payload.get("message") or {}).get("content") or "{}"
     payload = json.loads(raw_text)
     return _draft_from_payload(payload, page_number), {
+        "provider": "ollama",
+        "prompt": prompt,
         "raw_response": raw_text,
         "model": model,
         "base_url": base_url,
@@ -284,6 +377,7 @@ def extract_page_with_vlm(
     image_path: Path,
     page_number: int,
     settings: Settings,
+    ocr_layout_context: str | None = None,
 ) -> tuple[DocumentDraft, dict[str, Any]]:
     if settings.vlm_provider == "local_vllm":
         return _extract_page_with_local_vllm(
@@ -293,6 +387,7 @@ def extract_page_with_vlm(
             api_key=settings.local_vllm_api_key,
             model=settings.local_vllm_model,
             temperature=settings.local_vllm_temperature,
+            ocr_layout_context=ocr_layout_context,
         )
     if settings.vlm_provider == "ollama":
         return _extract_page_with_ollama(
@@ -301,6 +396,7 @@ def extract_page_with_vlm(
             base_url=settings.ollama_base_url,
             model=settings.ollama_model,
             temperature=settings.ollama_temperature,
+            ocr_layout_context=ocr_layout_context,
         )
     if not settings.openai_api_key:
         raise RuntimeError("OPENAI_API_KEY is required when VLM_PROVIDER=openai")
@@ -309,6 +405,7 @@ def extract_page_with_vlm(
         page_number=page_number,
         api_key=settings.openai_api_key,
         model=settings.openai_vision_model,
+        ocr_layout_context=ocr_layout_context,
     )
 
 
