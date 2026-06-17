@@ -18,6 +18,11 @@ class ParsedPage:
     page_number: int
     fields: dict[str, str]
 
+SQLITE_RESERVED_KEYWORDS = {
+    "SELECT", "TABLE", "INDEX", "INSERT", "DELETE", "UPDATE", "DROP", "ALTER", "CREATE"
+}
+
+
 class RuleBasedFormatter:
     """Converts loosely formatted model text into key-value pairs."""
 
@@ -96,6 +101,8 @@ def export_to_csv(parsed_pages: Sequence[ParsedPage], output_path: str | Path) -
 def _validated_table_name(table_name: str) -> str:
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", table_name):
         raise ValueError("table_name must contain only letters, numbers, and underscores")
+    if table_name.upper() in SQLITE_RESERVED_KEYWORDS:
+        raise ValueError("table_name cannot be a reserved SQL keyword")
     return table_name
 
 def export_to_sqlite(

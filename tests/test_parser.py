@@ -72,6 +72,15 @@ class ParserTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 export_to_sqlite(parsed, db_path, table_name="_hidden")
 
+
+    def test_sqlite_export_rejects_reserved_keyword_table_name(self) -> None:
+        parsed = [ParsedPage(page_number=1, fields={"A": "1"})]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "parsed.db"
+            with self.assertRaises(ValueError):
+                export_to_sqlite(parsed, db_path, table_name="select")
+
     def test_sqlite_export_rejects_unsafe_table_name(self) -> None:
         parsed = [ParsedPage(page_number=1, fields={"A": "1"})]
 
