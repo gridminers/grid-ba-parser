@@ -65,6 +65,15 @@ class ParserTests(unittest.TestCase):
             self.assertEqual(rows[1], ["1", "Account", "12345"])
             self.assertEqual(rows[-1], ["2", "Amount", "300"])
 
+
+    def test_sqlite_export_rejects_unsafe_table_name(self) -> None:
+        parsed = [ParsedPage(page_number=1, fields={"A": "1"})]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "parsed.db"
+            with self.assertRaises(ValueError):
+                export_to_sqlite(parsed, db_path, table_name="records; DROP TABLE parsed_records")
+
     def test_sqlite_export(self) -> None:
         parsed = [
             ParsedPage(page_number=1, fields={"A": "1", "B": "2"}),

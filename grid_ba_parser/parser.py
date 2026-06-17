@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -99,17 +100,26 @@ def export_to_csv(parsed_pages: Sequence[ParsedPage], output_path: str | Path) -
                 writer.writerow([page.page_number, field, value])
 
 
+
+
+def _validated_table_name(table_name: str) -> str:
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table_name):
+        raise ValueError("table_name must contain only letters, numbers, and underscores")
+    return table_name
+
+
 def export_to_sqlite(
     parsed_pages: Sequence[ParsedPage],
     database_path: str | Path,
     table_name: str = "parsed_records",
 ) -> None:
+    safe_table_name = _validated_table_name(table_name)
     connection = sqlite3.connect(str(database_path))
     try:
         cursor = connection.cursor()
         cursor.execute(
             f"""
-            CREATE TABLE IF NOT EXISTS {table_name} (
+            CREATE TABLE IF NOT EXISTS {safe_table_name} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 page_number INTEGER NOT NULL,
                 field TEXT NOT NULL,
@@ -118,9 +128,9 @@ def export_to_sqlite(
             """
         )
 
-        cursor.execute(f"DELETE FROM {table_name}")
+        cursor.execute(f"DELETE FROM {safe_table_name}")
         cursor.executemany(
-            f"INSERT INTO {table_name} (page_number, field, value) VALUES (?, ?, ?)",
+            f"INSERT INTO {safe_table_name} (page_number, field, value) VALUES (?, ?, ?)",
             [
                 (page.page_number, field, value)
                 for page in parsed_pages
