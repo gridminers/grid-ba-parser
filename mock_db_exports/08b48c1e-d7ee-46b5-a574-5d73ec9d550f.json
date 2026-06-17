@@ -1,0 +1,318 @@
+{
+  "document_id": "08b48c1e-d7ee-46b5-a574-5d73ec9d550f",
+  "filename": "test_1.pdf",
+  "sha256": "c02b11860b2db7ed0a35ea1a7115557750afa4711252b6fbeb765207abe3ac48",
+  "exported_at": "2026-06-17T14:19:02.705917Z",
+  "fields": [
+    {
+      "label": "Docusign Envelope ID",
+      "sanitized_value": "D89AF777-F2A1-4D1B-A2A6-1C99F9A93A57",
+      "value_normalized": "D89AF777-F2A1-4D1B-A2A6-1C99F9A93A57",
+      "value_raw": "D89AF777-F2A1-4D1B-A2A6-1C99F9A93A57",
+      "type": "identifier",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Projekttitel",
+      "sanitized_value": "Tiefenanode und KKS Anlage Grünewaldstraße",
+      "value_normalized": "Tiefenanode und KKS Anlage Grünewaldstraße",
+      "value_raw": "Tiefenanode und KKS Anlage Grünewaldstraße",
+      "type": "string",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "beantr. Gruppe | Projekt-ID",
+      "sanitized_value": "Proj-",
+      "value_normalized": "Proj-",
+      "value_raw": "Proj-",
+      "type": "string",
+      "page": 1,
+      "confidence": 0.8,
+      "source": "vlm"
+    },
+    {
+      "label": "Geschäftsjahr",
+      "sanitized_value": "2025",
+      "value_normalized": "2025",
+      "value_raw": "2025",
+      "type": "year",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Jahresauswertung",
+      "sanitized_value": "2025",
+      "value_normalized": "2025",
+      "value_raw": "2025",
+      "type": "year",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Genehmigungs-Nr.",
+      "sanitized_value": "138/25",
+      "value_normalized": "138/25",
+      "value_raw": "138/25",
+      "type": "identifier",
+      "page": 1,
+      "confidence": 0.98,
+      "source": "vlm"
+    },
+    {
+      "label": "PSP-Element",
+      "sanitized_value": "2H.02.2225.102.001",
+      "value_normalized": "2H.02.2225.102.001",
+      "value_raw": "2H.02.2225.102.001",
+      "type": "identifier",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Ausführungszeit (von - bis)",
+      "sanitized_value": "08/06/2025 - 15/02/2026",
+      "value_normalized": "08/06/2025 - 15/02/2026",
+      "value_raw": "08/06/2025 - 15/02/2026",
+      "type": "date_range",
+      "page": 1,
+      "confidence": 0.98,
+      "source": "vlm"
+    },
+    {
+      "label": "Antragsgrund",
+      "sanitized_value": "Ersatzinvestition",
+      "value_normalized": "Ersatzinvestition",
+      "value_raw": "Ersatzinvestition",
+      "type": "category",
+      "page": 1,
+      "confidence": 0.98,
+      "source": "vlm"
+    },
+    {
+      "label": "Projektstatus Maßnahmenplan",
+      "sanitized_value": "Projekt abweichend im Maßnahmenplan enthalten; Ersatz für Kramerstraße",
+      "value_normalized": "Projekt abweichend im Maßnahmenplan enthalten; Ersatz für Kramerstraße",
+      "value_raw": "Projekt abweichend im Maßnahmenplan enthalten; Ersatz für Kramerstraße",
+      "type": "string",
+      "page": 1,
+      "confidence": 0.96,
+      "source": "vlm"
+    },
+    {
+      "label": "Änderungen oder Neuinstallation notwendig?",
+      "sanitized_value": "nein",
+      "value_normalized": "nein",
+      "value_raw": "nein",
+      "type": "boolean",
+      "page": 1,
+      "confidence": 0.98,
+      "source": "vlm"
+    },
+    {
+      "label": "Sparte",
+      "sanitized_value": "Gas",
+      "value_normalized": "Gas",
+      "value_raw": "Gas",
+      "type": "category",
+      "page": 1,
+      "confidence": 0.98,
+      "source": "vlm"
+    },
+    {
+      "label": "Asset",
+      "sanitized_value": "HD-Netz",
+      "value_normalized": "HD-Netz",
+      "value_raw": "HD-Netz",
+      "type": "category",
+      "page": 1,
+      "confidence": 0.98,
+      "source": "vlm"
+    },
+    {
+      "label": "Materialkosten (netto)",
+      "sanitized_value": "1000 €",
+      "value_normalized": "1000 €",
+      "value_raw": "1000 €",
+      "type": "currency",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Fremdleistungen",
+      "sanitized_value": "90000 €",
+      "value_normalized": "90000 €",
+      "value_raw": "90000 €",
+      "type": "currency",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Eigenleistungen",
+      "sanitized_value": "2500 €",
+      "value_normalized": "2500 €",
+      "value_raw": "2500 €",
+      "type": "currency",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Ingenieurleistungen Dritte",
+      "sanitized_value": "0 €",
+      "value_normalized": "0 €",
+      "value_raw": "0 €",
+      "type": "currency",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Gesamtkosten ohne Zuschläge",
+      "sanitized_value": "93.500 €",
+      "value_normalized": "93.500 €",
+      "value_raw": "93.500 €",
+      "type": "currency",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Materialkostenzuschläge (17%)",
+      "sanitized_value": "170 €",
+      "value_normalized": "170 €",
+      "value_raw": "170 €",
+      "type": "currency",
+      "page": 1,
+      "confidence": 0.98,
+      "source": "vlm"
+    },
+    {
+      "label": "Investitionszuschläge (23%)",
+      "sanitized_value": "21.544 €",
+      "value_normalized": "21.544 €",
+      "value_raw": "21.544 €",
+      "type": "currency",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Zwischensumme Zuschläge",
+      "sanitized_value": "21.714 €",
+      "value_normalized": "21.714 €",
+      "value_raw": "21.714 €",
+      "type": "currency",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Gesamtkosten",
+      "sanitized_value": "115.214 €",
+      "value_normalized": "115.214 €",
+      "value_raw": "115.214 €",
+      "type": "currency",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Zahlungsplan",
+      "sanitized_value": "2025: 57.607 € (50%); 2026: 57.607 € (50%); 2027: 0 € (0%)",
+      "value_normalized": "2025: 57.607 € (50%); 2026: 57.607 € (50%); 2027: 0 € (0%)",
+      "value_raw": "Jahr 2025 50 % 57.607 €; Jahr 2026 50 % 57.607 €; Jahr 2027 0 % 0 €",
+      "type": "payment_plan",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "Leitungsmeter",
+      "sanitized_value": "0 m",
+      "value_normalized": "0 m",
+      "value_raw": "0 m",
+      "type": "length",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "ausführliche Maßnahmenbeschreibung und -begründung",
+      "sanitized_value": "Die bestehende Schutzanlage Altewiekring ist aufgrund von Streuströmen der Straßenbahnen stark störanfällig und fällt häufig aus dieses zu umgehen bedarf es dringend einen Standortwechsel der Schutzanlage. Vorgesehener Standort ist die Grünewaldstraße. Eine Überwachung ist derzeit nicht mehr möglich. Das Projekt umfasst: Tiefenbohrung (99m); Installation einer neuen KKS-Anlage mit 8 MMO-Anoden; Moderne Fernüberwachung via LTE; Komplette Installation und Inbetriebnahme. Die Maßnahme ist dringend erforderlich, um den zuverlässigen Korrosionsschutz wiederherzustellen. Die Arbeiten sollen von der Firma Steffel KKS GmbH durchgeführt werden. Technische Abwicklung durch Abt, Messwagen & Korosionsschutz",
+      "value_normalized": "Die bestehende Schutzanlage Altewiekring ist aufgrund von Streuströmen der Straßenbahnen stark störanfällig und fällt häufig aus dieses zu umgehen bedarf es dringend einen Standortwechsel der Schutzanlage. Vorgesehener Standort ist die Grünewaldstraße. Eine Überwachung ist derzeit nicht mehr möglich. Das Projekt umfasst: Tiefenbohrung (99m); Installation einer neuen KKS-Anlage mit 8 MMO-Anoden; Moderne Fernüberwachung via LTE; Komplette Installation und Inbetriebnahme. Die Maßnahme ist dringend erforderlich, um den zuverlässigen Korrosionsschutz wiederherzustellen. Die Arbeiten sollen von der Firma Steffel KKS GmbH durchgeführt werden. Technische Abwicklung durch Abt, Messwagen & Korosionsschutz",
+      "value_raw": "Die bestehende Schutzanlage Altewiekring ist aufgrund von Streuströmen der Straßenbahnen stark störanfällig und fällt häufig aus dieses zu umgehen bedarf es dringend einen Standortwechsel der Schutzanlage. Vorgesehener Standort ist die Grünewaldstraße. Eine Überwachung ist derzeit nicht mehr möglich. Das Projekt umfasst: Tiefenbohrung (99m); Installation einer neuen KKS-Anlage mit 8 MMO-Anoden; Moderne Fernüberwachung via LTE; Komplette Installation und Inbetriebnahme. Die Maßnahme ist dringend erforderlich, um den zuverlässigen Korrosionsschutz wiederherzustellen. Die Arbeiten sollen von der Firma Steffel KKS GmbH durchgeführt werden. Technische Abwicklung durch Abt, Messwagen & Korosionsschutz",
+      "type": "text",
+      "page": 1,
+      "confidence": 0.94,
+      "source": "vlm"
+    },
+    {
+      "label": "Planer Datum",
+      "sanitized_value": "03.06.2025 22:28:39 MESZ",
+      "value_normalized": "03.06.2025 22:28:39 MESZ",
+      "value_raw": "03.06.2025 | 22:28:39 MESZ",
+      "type": "datetime",
+      "page": 1,
+      "confidence": 0.98,
+      "source": "vlm"
+    },
+    {
+      "label": "Abt. Ltg. Planer Datum",
+      "sanitized_value": "04.06.2025 08:01:52 MESZ",
+      "value_normalized": "04.06.2025 08:01:52 MESZ",
+      "value_raw": "04.06.2025 | 08:01:52 MESZ",
+      "type": "datetime",
+      "page": 1,
+      "confidence": 0.96,
+      "source": "vlm"
+    },
+    {
+      "label": "techn. Controlling Datum",
+      "sanitized_value": "04.06.2025 09:03:35 MESZ",
+      "value_normalized": "04.06.2025 09:03:35 MESZ",
+      "value_raw": "04.06.2025 | 09:03:35 MESZ",
+      "type": "datetime",
+      "page": 1,
+      "confidence": 0.96,
+      "source": "vlm"
+    },
+    {
+      "label": "Abt. Ltg. Techn. Controlling Datum",
+      "sanitized_value": "04.06.2025 11:22:46 MESZ",
+      "value_normalized": "04.06.2025 11:22:46 MESZ",
+      "value_raw": "04.06.2025 | 11:22:46 MESZ",
+      "type": "datetime",
+      "page": 1,
+      "confidence": 0.97,
+      "source": "vlm"
+    },
+    {
+      "label": "GF",
+      "sanitized_value": "Genehmigt",
+      "value_normalized": "Genehmigt",
+      "value_raw": "Genehmigt",
+      "type": "approval_status",
+      "page": 1,
+      "confidence": 0.99,
+      "source": "vlm"
+    },
+    {
+      "label": "GF Datum",
+      "sanitized_value": "04.06.2025 18:26:41 MESZ",
+      "value_normalized": "04.06.2025 18:26:41 MESZ",
+      "value_raw": "04.06.2025 | 18:26:41 MESZ",
+      "type": "datetime",
+      "page": 1,
+      "confidence": 0.97,
+      "source": "vlm"
+    }
+  ]
+}
