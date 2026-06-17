@@ -1,0 +1,33 @@
+[project]
+name = "grid-ba-parser-api"
+version = "0.1.0"
+description = "FastAPI backend for hybrid extraction from German infrastructure approval PDFs."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0",
+  "python-multipart>=0.0.9",
+  "pydantic>=2.8.0",
+  "pydantic-settings>=2.4.0",
+  "python-dotenv>=1.0.1",
+  "PyMuPDF>=1.24.0",
+  "Pillow>=10.4.0",
+  "pytesseract>=0.3.13",
+  "openai>=1.51.0",
+  "supabase>=2.6.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27.0",
+  "pytest>=8.2.0",
+  "ruff>=0.6.0"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
