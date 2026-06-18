@@ -9,6 +9,10 @@ The project contains:
 - `supabase/schema.sql` - Postgres/Supabase schema, including pgvector tables for approved chunks.
 - `docs/parser-prototype-plan.md` - Architecture and implementation plan.
 
+## Screenshots
+<img width="1841" height="1033" alt="image" src="https://github.com/user-attachments/assets/45bd4729-aa69-4558-bc84-eb482a4bdcb5" />
+
+
 ## Current Feature Status
 
 ### Implemented
